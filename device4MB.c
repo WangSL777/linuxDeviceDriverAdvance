@@ -41,12 +41,15 @@ int device4MB_release(struct inode *inode, struct file *filep)
 ssize_t device4MB_read(struct file *filep, char *buf, size_t count, loff_t *f_pos)
 {
 
-	int i;
+	int i=0;
 	char nop[1] ={0};
 	if((*f_pos) > 0)
 		return 0; //end of file, this will stop continously print messge
-
-	i = copy_to_user(buf, device4MB_data, DEVICE_MAX_SIZE);
+	while(device4MB_data[i]!=0)
+	{
+		copy_to_user(&buf[i], &device4MB_data[i], 1);
+		i++;
+	}
 	if(i<DEVICE_MAX_SIZE)
 		copy_to_user(&buf[i], nop, 1);
 
@@ -74,6 +77,8 @@ ssize_t device4MB_write(struct file *filep, const char *buf, size_t count, loff_
 	{
 		device4MB_data[i] = buf[i];
 	}
+	if(i<DEVICE_MAX_SIZE)
+		device4MB_data[i] = 0;
 	return i;
 
 }
