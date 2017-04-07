@@ -8,6 +8,7 @@
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
 #define MAJOR_NUMBER 62
+#define DEVICE_MAX_SIZE 34
 
 /* forward declaration */
 int device4MB_open(struct inode *inode, struct file *filep);
@@ -40,18 +41,23 @@ int device4MB_release(struct inode *inode, struct file *filep)
 ssize_t device4MB_read(struct file *filep, char *buf, size_t count, loff_t *f_pos)
 {
 
+	int i;
+	char nop[1] ={0};
 	if((*f_pos) > 0)
 		return 0; //end of file, this will stop continously print messge
 
-	put_user(device4MB_data[0], buf);//copy to user data
+	i = copy_to_user(buf, device4MB_data, DEVICE_MAX_SIZE);
+	if(i<DEVICE_MAX_SIZE)
+		copy_to_user(&buf[i], nop, 1);
+
 	(*f_pos) ++;
-	return 1;
+	return DEVICE_MAX_SIZE;
 }
 
 ssize_t device4MB_write(struct file *filep, const char *buf, size_t count, loff_t *f_pos)
 {
-
-	if((*f_pos) > 0)
+/*
+	if((*f_pos) > (DEVICE_MAX_SIZE-1))
 		return -ENOSPC;//throw "No Space left on device" error
 	else
 	{
@@ -59,6 +65,16 @@ ssize_t device4MB_write(struct file *filep, const char *buf, size_t count, loff_
 		(*f_pos)++;
 		return 1;
 	}
+*/
+	int i;
+	if(count>DEVICE_MAX_SIZE)
+		return -ENOSPC;
+
+	for(i = 0; i<count; i++ )
+	{
+		device4MB_data[i] = buf[i];
+	}
+	return i;
 
 }
 
@@ -72,11 +88,11 @@ static int device4MB_init(void)
 		return result;
 	}
 
-	// allocate one byte of memory for storage
+	// allocate 4MB byte of memory for storage
 	// kmalloc is just like malloc, the second parameter is
 	// the type of memory to be allocated.
 	// To release the memory allocated by kmalloc, use kfree.
-	device4MB_data = kmalloc(sizeof(char), GFP_KERNEL);
+	device4MB_data = kmalloc(sizeof(char)*DEVICE_MAX_SIZE, GFP_KERNEL);
 
 	if (!device4MB_data) 
 	{
@@ -86,7 +102,7 @@ static int device4MB_init(void)
 		return -ENOMEM;
 	}
 	// initialize the value to be X
-	*device4MB_data = 'X';
+	sprintf(device4MB_data,"This is a device4MB device module");
 	printk(KERN_ALERT "This is a device4MB device module\n");
 	return 0;
 }
