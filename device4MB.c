@@ -41,27 +41,12 @@ int device4MB_release(struct inode *inode, struct file *filep)
 
 ssize_t device4MB_read(struct file *filep, char *buf, size_t count, loff_t *f_pos)
 {
-/**/
-
-	int i=0;
-	char nop[1] ={0};
 	int num = 0;
 	int retval = 0;
-	printk(KERN_ALERT "Before reader, *f_pos = %d\n",(int)(*f_pos));
 
 	if((*f_pos) > 0)
 		return 0; //end of file, this will stop continously print messge
-	printk(KERN_ALERT "in device4MB_read, device[0]~[5] is %c, %c, %c, %c, %c, %d\n",device4MB_data[0],device4MB_data[1],device4MB_data[2],device4MB_data[3],device4MB_data[4],device4MB_data[5]);
 
-	//while(device4MB_data[i]!=0)
-	//{
-		//copy_to_user(&(buf[i]), &(device4MB_data[i]), 1);
-	//	put_user(device4MB_data[i], &(buf[i]));
-	//	i++;
-	//	printk(KERN_ALERT "i is %d",i);
-	//}
-	//if(i<DEVICE_MAX_SIZE)
-	//	copy_to_user(&(buf[i]), nop, 1);
 	if(count<=0 || count > DEVICE_MAX_SIZE)
 		return 0;
 	
@@ -70,35 +55,44 @@ ssize_t device4MB_read(struct file *filep, char *buf, size_t count, loff_t *f_po
 	else
 		num = dataLen;
 
-	
 	retval = copy_to_user(buf, device4MB_data, num);
 	if(retval!=0)
 		return -EFAULT;
 
 	(*f_pos) += num;
-
 	return num;
-	
-	printk(KERN_ALERT "After reader, i = %d, buf[0]-[5] is %c, %c, %c, %c, %c, %c",i, buf[0],buf[1],buf[2],buf[3],buf[4],buf[5]);
-	
-	printk(KERN_ALERT "After reader, *f_pos = %d\n",(int)(*f_pos));
-	return DEVICE_MAX_SIZE;
-
 }
 
 ssize_t device4MB_write(struct file *filep, const char *buf, size_t count, loff_t *f_pos)
 {
-	int i;
-	if(count>DEVICE_MAX_SIZE)
-		return -ENOSPC;
+// clear + write
+	int num,i;
+	if(count <= 0)
+		return 0;
+	if(count > DEVICE_MAX_SIZE)
+		num = DEVICE_MAX_SIZE;
+	else
+		num = count;
 
-	for(i = 0; i<count; i++ )
+	for(i = 0; i<num; i++ )
 	{
 		device4MB_data[i] = buf[i];
 	}
-	if(i<DEVICE_MAX_SIZE)
-		device4MB_data[i] = 0;
+	dataLen = i;
 	return i;
+
+/*	append
+	int num = 0;
+	int max_num = DEVICE_MAX_SIZE - dataLen;
+	if(count <= 0)
+		return 0;
+	if(count > max_num)
+		num = max_num;
+	else
+		num = count;
+	memcpy(&(device4MB_data[dataLen]), buf, num);
+	return num;
+*/
 
 }
 
@@ -126,12 +120,9 @@ static int device4MB_init(void)
 		return -ENOMEM;
 	}
 	// initialize the value 
-	//result = sprintf(device4MB_data,"This is a device4MB device module");
-	result = sprintf(device4MB_data,"hello");
-	device4MB_data[5] = 0;
-	dataLen = 5;
+	result = sprintf(device4MB_data,"This is a device4MB device module");
+	dataLen = 33;
 	printk(KERN_ALERT "This is a device4MB device module\n");
-	printk(KERN_ALERT "result is %d, device[0]~[5] is %c, %c, %c, %c, %c, %d\n",result,device4MB_data[0],device4MB_data[1],device4MB_data[2],device4MB_data[3],device4MB_data[4],device4MB_data[5]);
 	return 0;
 }
 
