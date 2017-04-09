@@ -8,7 +8,7 @@
 #include <linux/proc_fs.h>
 #include <asm/uaccess.h>
 #define MAJOR_NUMBER 62
-#define DEVICE_MAX_SIZE 4000000
+#define DEVICE_MAX_SIZE 4194304
 
 /* forward declaration */
 int device4MB_open(struct inode *inode, struct file *filep);
@@ -47,7 +47,7 @@ ssize_t device4MB_read(struct file *filep, char *buf, size_t count, loff_t *f_po
 	if((*f_pos) > 0)
 		return 0; //end of file, this will stop continously print messge
 
-	if(count<=0 || count > DEVICE_MAX_SIZE)
+	if(count<=0)
 		return 0;
 	
 	if(count<=dataLen)
