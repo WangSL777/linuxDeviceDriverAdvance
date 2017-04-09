@@ -15,6 +15,7 @@ int device4MB_open(struct inode *inode, struct file *filep);
 int device4MB_release(struct inode *inode, struct file *filep);
 ssize_t device4MB_read(struct file *filep, char *buf, size_t count, loff_t *f_pos);
 ssize_t device4MB_write(struct file *filep, const char *buf, size_t count, loff_t *f_pos);
+loff_t device4MB_llseek(struct file* filp, loff_t offset, int whence);
 static void device4MB_exit(void);
 
 /* definition of file_operation structure */
@@ -23,7 +24,8 @@ struct file_operations device4MB_fops =
 	read: device4MB_read,
 	write: device4MB_write,
 	open: device4MB_open,
-	release: device4MB_release
+	release: device4MB_release,
+	llseek: device4MB_llseek
 };
 
 char *device4MB_data = NULL;
@@ -44,7 +46,7 @@ ssize_t device4MB_read(struct file *filep, char *buf, size_t count, loff_t *f_po
 	int num = 0;
 	int retval = 0;
 
-	if((*f_pos) > 0)
+	if((*f_pos) >= dataLen)
 		return 0; //end of file, this will stop continously print messge
 
 	if(count<=0)
@@ -66,19 +68,35 @@ ssize_t device4MB_read(struct file *filep, char *buf, size_t count, loff_t *f_po
 ssize_t device4MB_write(struct file *filep, const char *buf, size_t count, loff_t *f_pos)
 {
 // clear + write
-	int num,i;
+	int num,i,availNum;
+	if((*f_pos)>dataLen)
+		return 0;
+
+	availNum = dataLen - (*f_pos);
+	
 	if(count <= 0)
 		return 0;
-	if(count > DEVICE_MAX_SIZE)
-		num = DEVICE_MAX_SIZE;
-	else
+	else if(count > 0 && count <= availNum)
+	{
 		num = count;
+		dataLen = dataLen;//remain the same
+	}
+	else if(count > availNum && count <= (DEVICE_MAX_SIZE - (*f_pos)))
+	{
+		num = count;
+		dataLen = *f_pos + num;
+	}
+	else
+	{
+		num = (DEVICE_MAX_SIZE - (*f_pos));
+		dataLen = DEVICE_MAX_SIZE;
+	}
 
 	for(i = 0; i<num; i++ )
 	{
-		device4MB_data[i] = buf[i];
+		device4MB_data[(*f_pos)+i] = buf[i];
 	}
-	dataLen = i;
+	(*f_pos) += num;
 	return i;
 
 /*	append
@@ -94,6 +112,32 @@ ssize_t device4MB_write(struct file *filep, const char *buf, size_t count, loff_
 	return num;
 */
 
+}
+
+loff_t device4MB_llseek(struct file* filp, loff_t offset, int whence)
+{
+	loff_t new_pos = 0;
+	switch(whence)
+	{
+		case 0: /* SEEK_SET: */
+			new_pos = offset;
+			break;
+		case 1: /* SEEK_CUR: */
+			new_pos = filp->f_pos + offset;
+			break;
+		case 2: /* SEEK_END: */
+			new_pos = dataLen + offset;
+			break;
+		default: /* not supported */
+			return -EINVAL;
+	}
+	if(new_pos < 0)
+		new_pos = 0;
+	if(new_pos > dataLen)
+		new_pos = dataLen;
+	filp->f_pos = new_pos;
+	dataLen = dataLen - new_pos;
+	return new_pos;
 }
 
 static int device4MB_init(void)
@@ -117,8 +161,9 @@ static int device4MB_init(void)
 		return -ENOMEM;
 	}
 	// initialize the value 
-	result = sprintf(device4MB_data,"This is a device4MB device module");
-	dataLen = 33;
+	memset(device4MB_data,0,sizeof(char)*DEVICE_MAX_SIZE);
+	//result = sprintf(device4MB_data,"This is a device4MB device module");
+	dataLen = 0;
 	printk(KERN_ALERT "This is a device4MB device module\n");
 	return 0;
 }
