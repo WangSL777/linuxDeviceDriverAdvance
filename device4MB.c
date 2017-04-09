@@ -107,9 +107,6 @@ static int device4MB_init(void)
 	}
 
 	// allocate 4MB byte of memory for storage
-	// kmalloc is just like malloc, the second parameter is
-	// the type of memory to be allocated.
-	// To release the memory allocated by kmalloc, use kfree.
 	device4MB_data = kmalloc(sizeof(char)*DEVICE_MAX_SIZE, GFP_KERNEL);
 
 	if (!device4MB_data) 
@@ -128,9 +125,8 @@ static int device4MB_init(void)
 
 static void device4MB_exit(void)
 {
-	// if the pointer is pointing to something
+	// if the pointer is pointing to something,  free the memory and assign the pointer to NULL
 	if (device4MB_data) {
-	// free the memory and assign the pointer to NULL
 	kfree(device4MB_data);
 	device4MB_data = NULL;
 	}

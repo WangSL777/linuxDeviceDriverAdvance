@@ -21,13 +21,11 @@ int main(int argc, char** argv)
 	char data[9] = {0};
 	int temp1, temp2;
 	for(i=0; i<0x14000; i++)
-	//for(i=0; i<10; i++)
 	{
 		for(k=0;k<8;k++)
 		{
 			for(j=0;j<5;j++)
 			{
-				//data[j] = (char)(i%(int)(pow(10,(5-j))))/(pow(10,(4-j))+ '0');
 				temp1 = (int)pow((double)10,(double)(5-j));
 				temp2 = (int)pow((double)10,(double)(4-j));
 				data[j] = (char)(((i%temp1)/temp2)+'0');
