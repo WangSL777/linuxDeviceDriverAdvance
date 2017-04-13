@@ -54,15 +54,10 @@ ssize_t device4MB_read(struct file *filep, char *buf, size_t count, loff_t *f_po
 	int retval = 0;
 	int availNum = 0;
 	
-	printk(KERN_ALERT "debug1 Before write, f_pos is %d, endOffset is %d\n",(int)(filep->f_pos),endOffset);	
-
-
 	if(endOffset<0 ||(filep->f_pos) >= (endOffset + 1) || (filep->f_pos) <0 ||(*f_pos) >= (endOffset + 1))
 		return 0; //end of file, this will stop continously print messge
 	
-	printk(KERN_ALERT "debug2, f_pos is %d\n",(int)(filep->f_pos));	
 	availNum = endOffset - (filep->f_pos) + 1;
-	printk(KERN_ALERT "debug3, f_pos is %d\n",(int)(filep->f_pos));	
 
 	if(count<=0 || availNum <=0)
 		return 0;
@@ -78,15 +73,14 @@ ssize_t device4MB_read(struct file *filep, char *buf, size_t count, loff_t *f_po
 
 	(filep->f_pos) += num;
 	(*f_pos) += num;
-
+	
+	printk(KERN_ALERT "device4MB_read read %d byte from device\n", num);
 	return num;
 }
 
 ssize_t device4MB_write(struct file *filep, const char *buf, size_t count, loff_t *f_pos)
 {
-// clear + write
 	int num,i,availNum;
-	printk(KERN_ALERT "Before write, f_pos is %d\n",(int)(filep->f_pos));	
 
 	if(endOffset == -1)
 	{
@@ -100,7 +94,6 @@ ssize_t device4MB_write(struct file *filep, const char *buf, size_t count, loff_
 		availNum = endOffset - (filep->f_pos) + 1;
 	}
 
-	printk(KERN_ALERT "in write availNum is %d\n",availNum);
 	
 	if(count <= 0)
 		return 0;
@@ -109,19 +102,16 @@ ssize_t device4MB_write(struct file *filep, const char *buf, size_t count, loff_
 		num = count;
 		if(endOffset == -1)
 			endOffset = num -1;
-		printk(KERN_ALERT "debug 1 num is %d\n", num);	
 	}
 	else if(count > availNum && count <= (DEVICE_MAX_SIZE - (filep->f_pos)))
 	{
 		num = count;
 		endOffset = (filep->f_pos) + num -1;
-		printk(KERN_ALERT "debug 2 num is %d\n", num);	
 	}
 	else
 	{
 		num = (DEVICE_MAX_SIZE - (filep->f_pos));
 		endOffset = DEVICE_MAX_SIZE -1;
-		printk(KERN_ALERT "debug 3 num is %d\n", num);	
 	}
 
 	for(i = 0; i<num; i++ )
@@ -129,22 +119,9 @@ ssize_t device4MB_write(struct file *filep, const char *buf, size_t count, loff_
 		device4MB_data[(filep->f_pos)+i] = buf[i];
 	}
 	(filep->f_pos) += num;
-	printk(KERN_ALERT "before exist write, f_pos is %d\n",(int)(filep->f_pos));	
+
+	printk(KERN_ALERT "device4MB_write write %d byte to device\n", i);
 	return i;
-
-/*	append
-	int num = 0;
-	int max_num = DEVICE_MAX_SIZE - dataLen;
-	if(count <= 0)
-		return 0;
-	if(count > max_num)
-		num = max_num;
-	else
-		num = count;
-	memcpy(&(device4MB_data[dataLen]), buf, num);
-	return num;
-*/
-
 }
 
 loff_t device4MB_llseek(struct file* filp, loff_t offset, int whence)
@@ -152,26 +129,26 @@ loff_t device4MB_llseek(struct file* filp, loff_t offset, int whence)
 	loff_t new_pos = 0;
 	switch(whence)
 	{
-		case 0: /* SEEK_SET: */
+		case SEEK_SET: /* 0: */
 			new_pos = offset;
 			break;
-		case 1: /* SEEK_CUR: */
+		case SEEK_CUR: /* 1: */
 			new_pos = filp->f_pos + offset;
 			break;
-		case 2: /* SEEK_END: */
+		case SEEK_END: /* 2: */
 			new_pos = endOffset + offset +1;
 			break;
 		default: /* not supported */
 			printk(KERN_ALERT "llseek, not support whence, return %d\n",(int)(-EINVAL));	
 			return -EINVAL;
 	}
-	printk(KERN_ALERT "llseek, new_pos is %d\n",(int)(new_pos));	
 	if(new_pos < 0)
 		new_pos = 0;
 	if(new_pos >= (endOffset + 1))
 		new_pos = endOffset + 1;
-	filp->f_pos = new_pos;
-	printk(KERN_ALERT "llseek2, new_pos is %d, endOffset is %d\n",(int)(new_pos),endOffset);	
+	filp->f_pos = new_pos;	
+
+	printk(KERN_ALERT "device4MB_llseek move file pointer to offset %d\n", (int)new_pos);
 	return new_pos;
 }
 
@@ -207,7 +184,6 @@ long device_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			printk(KERN_WARNING "Hello ioctl\n");
 			break;
 		case DEVICE4MB_IOCGET:
-			printk(KERN_WARNING "Hello ioctl1\n");
 			if(dev_msg)
 			{
 				if(copy_to_user((char *)arg, dev_msg, strlen(dev_msg))==0);
@@ -215,7 +191,6 @@ long device_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			}
 			break;
 		case DEVICE4MB_IOCSET:
-			printk(KERN_WARNING "Hello ioctl2\n");
 			if(dev_msg)
 			{
 				kfree(dev_msg);
@@ -228,7 +203,6 @@ long device_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 				ret = strlen((char *)arg);
 			break;
 		case DEVICE4MB_IOCGETSET:
-			printk(KERN_WARNING "Hello ioctl3\n");
 			temp = kmalloc(strlen((char *)arg)+1, GFP_KERNEL);
 			for(i=0;i<strlen((char *)arg);i++)
 				temp[i] = 0;
@@ -245,13 +219,13 @@ long device_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			temp = NULL;
 			if(tempret1 == 1 && tempret2 == 1)
 				ret = 1;
+			printk(KERN_WARNING "DEVICE4MB_IOCGETSET dev_msg is (%s)\n",dev_msg);
 			break;
 		default: return -ENOTTY;
 	}
-	return ret;
-
-	
+	return ret;	
 }
+
 static int device4MB_init(void)
 {
 	int result;
@@ -274,8 +248,6 @@ static int device4MB_init(void)
 	}
 	// initialize the value 
 	memset(device4MB_data,0,sizeof(char)*DEVICE_MAX_SIZE);
-	//result = sprintf(device4MB_data,"This is a device4MB device module");
-	//dataLen = 0;
 	startOffset = 0;
 	endOffset = -1;
 	printk(KERN_ALERT "This is a device4MB device module\n");
@@ -289,7 +261,6 @@ static void device4MB_exit(void)
 	{
 		kfree(device4MB_data);
 		device4MB_data = NULL;
-		printk(KERN_ALERT "Exit, free data\n");
 	}
 	if(dev_msg)
 	{
@@ -301,7 +272,6 @@ static void device4MB_exit(void)
 
 	// unregister the device
 	unregister_chrdev(MAJOR_NUMBER, "device4MB");
-	printk(KERN_ALERT "device4MB device module is unloaded\n");
 }
 MODULE_LICENSE("GPL");
 module_init(device4MB_init);

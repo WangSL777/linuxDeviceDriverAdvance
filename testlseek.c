@@ -37,6 +37,10 @@ void test(){
 
 	//k = lseek(fd,0,SEEK_SET);
 	//printf("lseek = %d\n",k);
+	char buf[5*1024*1024] = {0};
+	k = lseek(fd,0,SEEK_SET);
+	k = read(fd, buf, 5*1024*1024);
+	printf("At last, device4MB has content as %s\n",buf);
 }
 
 void initial(char i){
